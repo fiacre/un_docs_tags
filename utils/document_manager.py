@@ -1,4 +1,5 @@
 import ssl
+from collections import defaultdict
 from pypdf2xml import pdf2xml
 import lxml.etree as ET
 from io import BytesIO
@@ -38,16 +39,38 @@ class DocumentManager:
         a = [d.text.strip() for d in doc_symbols]
         b = [l.text.strip('\n') for l in links]
         data = dict(zip(a, b))
-
+        document_tags = self._get_tags_for_documets(doc_symbols)
+        raw_text = self._get_raw_text_from_docs(data.values())
         return data
 
     def _get_document_symbols(self, root):
+        '''
+        @root: xml root
+        '''
         doc_symbols = root.xpath('.//s:datafield[@tag="191"]/s:subfield[@code="a"]', namespaces=self.ns)
         return doc_symbols
 
     def _get_pdf_links(self, root):
+        '''
+        @root: xml root
+        '''
         links = root.xpath(
             './/s:datafield[@tag="856"][s:subfield[@code="y"]="English"]/s:subfield[@code="u"]', namespaces=self.ns)
         return links
 
-    
+    def _get_tags_for_documets(self, doc):
+        '''
+        @doc: list of xml nodes
+        '''
+        document_tags = defaultdict(list)
+        for elem in doc:
+            tags = elem.xpath('../../s:datafield[@tag="650"]/s:subfield[@code="a"]', namespaces=self.ns)
+            document_tags = [t.text.strip() for t in tags]
+        return document_tags
+
+    def _get_raw_text_for_documents(self, doc_list):
+        raw_text = []
+        for doc in doc_list:
+            xml = pdf2xml(doc)
+            raw_text.append(xml)
+        return raw_text

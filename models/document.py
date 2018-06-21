@@ -21,6 +21,7 @@ class Document(Base):
     url = Column(URLType, unique=True, nullable=False)
     xml = Column(Text, nullable=False)
     raw_text = Column(Text(nullable=True))
+    symbol = Column(Text(nullable=False))
     tags = relationship("Tag", secondary=documents_tags)
 
     def __init__(self, url):
