@@ -1,11 +1,11 @@
 import ssl
 from collections import defaultdict
-from pypdf2xml import pdf2xml
 import lxml.etree as ET
 from io import BytesIO
 from urllib import urlopen
 from models import Document, Tag
 from logging import getLogger
+import PyPDF2
 
 logger = getLogger(__name__)
 
@@ -71,6 +71,10 @@ class DocumentManager:
     def _get_raw_text_for_documents(self, doc_list):
         raw_text = []
         for doc in doc_list:
-            xml = pdf2xml(doc)
-            raw_text.append(xml)
+            resp = urlopen(doc)
+            data = BytesIO(resp.read())
+            reader = PyPDF2.PdfFileReader(data)
+            for i in range(0, reader.numPages):
+                page_obj = reader.getPage(i)
+                raw_text.append(page_obj.extractText())
         return raw_text
