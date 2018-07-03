@@ -1,13 +1,18 @@
+from os.path import join, split
+import subprocess
 import ssl
 from collections import defaultdict
 import lxml.etree as ET
 from io import BytesIO
-from urllib import urlopen
+from urllib import urlopen, urlparse
+# from urllib.parse import unquote, urlsplit
 from models import Document, Tag
 from logging import getLogger
-import PyPDF2
+from proj.config import Config
 
 logger = getLogger(__name__)
+
+DOWNLOAD_DIR = Config.get("DOWNLOAD_DIR", None)
 
 
 class DocumentManager:
@@ -16,7 +21,13 @@ class DocumentManager:
     def __init__(self):
         pass
 
-    def get_details_from_undl_xml(self, url):
+    def update_document_object(self, **kwargs):
+        pass
+
+    def update_tag_objects(self, **kwargs):
+        pass
+
+    def get_details_from_undl_doc(self, url):
         '''
         given a list of documents described in UNDL xml
         get the raw English text of the document
@@ -34,21 +45,24 @@ class DocumentManager:
             logger.debug("No XML for query: {}".format(url))
             raise
         root = ET.fromstring(xml)
-        doc_symbols = self._get_document_symbols(root)
-        links = self._get_pdf_links(root)
-        a = [d.text.strip() for d in doc_symbols]
-        b = [l.text.strip('\n') for l in links]
-        data = dict(zip(a, b))
-        document_tags = self._get_tags_for_documets(doc_symbols)
-        raw_text = self._get_raw_text_from_docs(data.values())
-        return data
+        doc_nodes = self._get_document_symbols(root)
+        doc_loc = self._get_pdf_links(root)
+        symbols = [d.text.strip() for d in doc_nodes]
+        links = [l.text.strip('\n') for l in doc_loc]
+
+        symbol_links = dict(zip(symbols, links))
+
+        document_tags = self._get_tags_for_documents(doc_nodes)
+        raw_text = []
+        for symbol, link in symbol_links.items():
+            raw_text.append(self._get_raw_text_from_document(symbol, link))
 
     def _get_document_symbols(self, root):
         '''
         @root: xml root
         '''
-        doc_symbols = root.xpath('.//s:datafield[@tag="191"]/s:subfield[@code="a"]', namespaces=self.ns)
-        return doc_symbols
+        doc_nodes = root.xpath('.//s:datafield[@tag="191"]/s:subfield[@code="a"]', namespaces=self.ns)
+        return doc_nodes
 
     def _get_pdf_links(self, root):
         '''
@@ -58,23 +72,31 @@ class DocumentManager:
             './/s:datafield[@tag="856"][s:subfield[@code="y"]="English"]/s:subfield[@code="u"]', namespaces=self.ns)
         return links
 
-    def _get_tags_for_documets(self, doc):
+    def _get_tags_for_documents(self, doc_nodes):
         '''
         @doc: list of xml nodes
         '''
         document_tags = defaultdict(list)
-        for elem in doc:
+        for elem in doc_nodes:
             tags = elem.xpath('../../s:datafield[@tag="650"]/s:subfield[@code="a"]', namespaces=self.ns)
             document_tags = [t.text.strip() for t in tags]
         return document_tags
 
-    def _get_raw_text_for_documents(self, doc_list):
-        raw_text = []
-        for doc in doc_list:
-            resp = urlopen(doc)
-            data = BytesIO(resp.read())
-            reader = PyPDF2.PdfFileReader(data)
-            for i in range(0, reader.numPages):
-                page_obj = reader.getPage(i)
-                raw_text.append(page_obj.extractText())
-        return raw_text
+    def _get_raw_text_from_document(self, symbol, link):
+        cmd = '/Users/andrew/projects/smart_tagger/venv/bin/pdf2txt.py'
+
+        # cur_doc = session.query(Document).query(Document.symbol == symbol)
+        if cur_doc:
+            logger.error("{} has already been processed".format())
+            raise RuntimeError("{} has already been processed".format(symbol))
+
+        resp = urlopen(link, context=ssl._create_unverified_context())
+        data = BytesIO(resp.read())
+        with open((join(DOWNLOAD_DIR, link), 'wb')) as path:
+            path.write(data)
+        o = urlparse(link)
+        doc_name = split(o.path)[-1]
+        completed = subprocess.run([cmd, doc_name], stdout=subprocess.PIPE)
+
+        raw_text = completed.stdout.decode('utf-8')
+        # raw_text

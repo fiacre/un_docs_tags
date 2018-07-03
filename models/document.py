@@ -19,25 +19,21 @@ class Document(Base):
 
     id = Column(Integer, primary_key=True)
     url = Column(URLType, unique=True, nullable=False)
-    xml = Column(Text, nullable=False)
     raw_text = Column(Text(nullable=True))
     symbol = Column(Text(nullable=False))
     tags = relationship("Tag", secondary=documents_tags)
 
-    def __init__(self, url):
-        self.url = url
+    def __init__(self, symbol):
+        self.symbol = symbol
 
     def __repr__(self):
-        return "<DocumentMetadata: {}".format(self.url)
+        return "<DocumentMetadata: {}".format(self.symbol)
 
     def to_dict(self):
         return {
             "id": self.id,
             "url": self.undl,
-            "xml": self.xml,
-            "json": self.json,
-            "created": self.created.strftime("%x %X"),
-            "updated": self.updated.strftime("%x %X")
+            "symbol": self.symbol
         }
 
 
@@ -46,7 +42,7 @@ class Tag(Base):
 
     id = Column(Integer, primary_key=True)
     tag = Column(String(nullable=False, unique=True))
-    uri = Column(URLType, unique=True, nullable=False)
+    uri = Column(URLType, unique=True, nullable=True)
 
     document_id = Column(Integer, ForeignKey('documents.id'))
     documents = relationship("Document", relationship('Document'))
