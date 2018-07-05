@@ -15,6 +15,14 @@ logger = getLogger(__name__)
 DOWNLOAD_DIR = Config.get("DOWNLOAD_DIR", None)
 
 
+class UNDLConnectionException(Exception):
+    pass
+
+
+class UNDLXmlException(Exception):
+    pass
+
+
 class DocumentManager:
     ns = {'s': 'http://www.loc.gov/MARC21/slim'}
 
@@ -27,23 +35,24 @@ class DocumentManager:
     def update_tag_objects(self, **kwargs):
         pass
 
-    def get_details_from_undl_doc(self, url):
+    def get_details_from_undl_url(self, url):
         '''
+        fetch a UN Digital Library URL with XML
         given a list of documents described in UNDL xml
         get the raw English text of the document
         the document symbol
-        and the tags
+        the tags (subjects) of the document
         @url: a fetchable resource that return XML
             in the MARCxml format
         '''
         resp = urlopen(url, context=ssl._create_unverified_context())
         if resp.status != 200:
             logger.debug("query {}, gave status: {}".format(url, resp.status))
-            raise
+            raise UNDLConnectionException
         xml = resp.read()
         if not xml:
             logger.debug("No XML for query: {}".format(url))
-            raise
+            raise UNDLXmlException
         root = ET.fromstring(xml)
         doc_nodes = self._get_document_symbols(root)
         doc_loc = self._get_pdf_links(root)
@@ -99,4 +108,4 @@ class DocumentManager:
         completed = subprocess.run([cmd, doc_name], stdout=subprocess.PIPE)
 
         raw_text = completed.stdout.decode('utf-8')
-        # raw_text
+        return raw_text
