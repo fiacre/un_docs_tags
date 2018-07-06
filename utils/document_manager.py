@@ -1,6 +1,7 @@
 from urllib.parse import urlparse, parse_qsl, urlencode, ParseResult
 from logging import getLogger
-from models.models import Document, Tag
+from models.models import Document, Tag, DocumentsTags
+from sqlalchemy.exc import IntegrityError
 from .xml_parse import XmlParse
 
 logger = getLogger(__name__)
@@ -38,7 +39,7 @@ class DocumentManager:
         ).get_url()
         return new_url
 
-    def update_documents_and_tags(self):
+    def insert_documents_and_tags(self):
         '''
         @url: undl url
         pass @url to XmlParse object
@@ -51,14 +52,43 @@ class DocumentManager:
         symbols_links, symbols_tags, symbols_text = parser.get_details_from_undl_url()
         print(symbols_links)
         for symbol, url in symbols_links.items():
-            doc = Document(symbol=symbol, url=url, raw_text=symbols_text['symbol'])
+            doc = Document(symbol=symbol, url=url, raw_text=symbols_text[symbol])
             for tag in symbols_tags[symbol]:
-                t = Tag(tag=tag)
-                self.session.add(t)
-                doc.append(t)
-
+                t = self._insert_tag(tag)
+                if t:
+                    self.session.add(t)
+                    doc.tags.append(t)
             self.session.add(doc)
             self.session.commit()
+
+    def _insert_document(self, symbol, url, raw_text, *tags):
+        query = self.session.query(Document).filter_by(symbol=symbol)
+        if query.count() >= 1:
+            return None
+        try:
+            doc = Document(symbol=symbol, url=url, raw_text=raw_text, tags=tags)
+            self.session.add(doc)
+            self.session.commit()
+        except IntegrityError as err:
+            logger.error("caught IntegrityError for document {} : {}".format(symbol, err))
+            return None
+        else:
+            return doc
+
+    def _insert_tag(self, tag, uri=None):
+        query = self.session.query(Tag).filter_by(tag=tag)
+        if query.count() >= 1:
+            return None
+        t = Tag(tag=tag, uri=uri)
+        self.session.add(t)
+        try:
+            self.session.commit()
+        except IntegrityError as err:
+            logger.error("Caught IntegrityError for tag: {}, {}".format(tag, err))
+            self.session.rollback()
+            return None
+        else:
+            return t
 
     def get_document_and_tags(self, symbol):
         pass

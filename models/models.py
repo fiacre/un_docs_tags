@@ -27,7 +27,7 @@ class Document(Base):
     updated = Column(DateTime, onupdate=datetime.datetime.utcnow)
 
     def __repr__(self):
-        return "<DocumentMetadata: {}".format(self.symbol)
+        return "<Document: {}".format(self.symbol)
 
     def to_dict(self):
         return {
@@ -43,3 +43,6 @@ class Tag(Base):
     id = Column(Integer, primary_key=True)
     tag = Column(String, nullable=False, unique=True)
     uri = Column(URLType, unique=True, nullable=True)
+
+    def __repr__(self):
+        return "<Tag: {}".format(self.tag)
