@@ -16,10 +16,13 @@ class Config:
     TIKA_SERVER_JAR = "/usr/local/Cellar/tika/1.18/libexec/tika-server-1.17.jar"
     TIKA_SERVER_ENDPOINT = "http://localhost:9998"
     TIKA_CLIENT_ONLY = False
+
     # TIKA_TRANSLATOR
     # TIKA_SERVER_CLASSPATH
     # TIKA_LOG_PATH
     # TIKA_PATH
+
+    DOWNLOAD_DIR = "/var/smarttagger/pdfs"
 
 
 class ProductionConfig(Config):
