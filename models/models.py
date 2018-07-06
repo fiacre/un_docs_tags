@@ -26,9 +26,6 @@ class Document(Base):
     created = Column(DateTime, default=datetime.datetime.utcnow)
     updated = Column(DateTime, onupdate=datetime.datetime.utcnow)
 
-    def __init__(self, symbol):
-        self.symbol = symbol
-
     def __repr__(self):
         return "<DocumentMetadata: {}".format(self.symbol)
 
