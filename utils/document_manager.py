@@ -25,7 +25,7 @@ class DocumentManager:
         self.url = url
         self.session = session
 
-    def paginate_undl_results(self, items_per_page=25, limit=100):
+    def paginate_undl_results(self, items_per_page=25, limit=500):
         '''
         set a search term for digitallibrary
         and use the api (such as it is)
@@ -54,6 +54,7 @@ class DocumentManager:
             yield new_url
             count += items_per_page
             self.url = new_url
+            logger.debug(self.url)
 
     def insert_documents_and_tags(self):
         '''
@@ -69,6 +70,7 @@ class DocumentManager:
             symbols_links, symbols_tags, symbols_text = parser.get_details_from_undl_url()
             logger.debug(symbols_links)
             for symbol, document_url in symbols_links.items():
+                logger.debug(symbol)
                 doc = Document(symbol=symbol, url=document_url, raw_text=symbols_text[symbol])
                 for tag in symbols_tags[symbol]:
                     t = self._insert_tag(tag)
