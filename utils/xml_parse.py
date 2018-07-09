@@ -27,7 +27,7 @@ class XmlParse:
 
     def __init__(self, url):
         '''
-        @url: a fetchable resource that return XML
+        @url: a resource that return XML
             in the MARCxml format
         '''
         self.url = url
@@ -81,7 +81,7 @@ class XmlParse:
 
     def _get_tags_for_documents(self, doc_nodes):
         '''
-        @doc: list of xml nodes
+        @doc_nodes: list of xml nodes
         '''
         document_tags = defaultdict(list)
         for elem in doc_nodes:
@@ -90,6 +90,11 @@ class XmlParse:
         return document_tags
 
     def _get_raw_text_from_document(self, link):
+        '''
+        Want to use tika or some other technology
+        that does not force a download -- but this
+        will have to do for now.
+        '''
         cmd = '/Users/andrew/projects/smart_tagger/venv/bin/pdf2txt.py'
 
         resp = urlopen(link, context=ssl._create_unverified_context())

@@ -1,10 +1,7 @@
-#!/usrbin/env   python
-
 from sqlalchemy import create_engine
 from sqlalchemy_utils import database_exists
 from config import Config
 from models.models import DocumentsTags, Document, Tag
-
 
 DB_URI = getattr(Config, 'DB_URI', None)
 
