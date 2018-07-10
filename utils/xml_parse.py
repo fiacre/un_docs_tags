@@ -56,7 +56,6 @@ class XmlParse:
         links = [l.text.strip('\n') for l in doc_loc]
 
         symbols_links = dict(zip(symbols, links))
-
         symbols_tags = self._get_tags_for_documents(doc_nodes)
         symbols_text = defaultdict(list)
         for symbol, link in symbols_links.items():
@@ -67,6 +66,8 @@ class XmlParse:
     def _get_document_symbols(self, root):
         '''
         @root: xml root
+        return the element tree nodes
+        collection > record > datafield
         '''
         doc_nodes = root.xpath('.//s:datafield[@tag="191"]/s:subfield[@code="a"]', namespaces=self.ns)
         return doc_nodes
@@ -87,6 +88,8 @@ class XmlParse:
         for elem in doc_nodes:
             tags = elem.xpath('../../s:datafield[@tag="650"]/s:subfield[@code="a"]', namespaces=self.ns)
             document_tags[elem.text.strip()] = [t.text.strip() for t in tags]
+        if not document_tags or document_tags == []:
+            raise UNDLXmlException("Could not get tags for current document")
         return document_tags
 
     def _get_raw_text_from_document(self, link):

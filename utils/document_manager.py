@@ -1,10 +1,12 @@
 from urllib.parse import urlparse, parse_qsl, urlencode, ParseResult
 from logging import getLogger
-from models.models import Document, Tag, DocumentsTags
-from sqlalchemy.exc import IntegrityError
+from models.models import Document, Tag
+from db.db import connection
 from .xml_parse import XmlParse
 
 logger = getLogger(__name__)
+
+connection = connection()
 
 
 class DocumentManager:
@@ -15,8 +17,6 @@ class DocumentManager:
     methods:
         paginate_undl_results
         insert_documents_and_tags
-        _insert_document
-        _insert_tag
         get_document_and_tags
         get_symbols
 
@@ -25,7 +25,7 @@ class DocumentManager:
         self.url = url
         self.session = session
 
-    def paginate_undl_results(self, items_per_page=25, limit=500):
+    def paginate_undl_results(self, items_per_page=25, limit=100):
         '''
         set a search term for digitallibrary
         and use the api (such as it is)
@@ -69,16 +69,33 @@ class DocumentManager:
             parser = XmlParse(self.url)
             symbols_links, symbols_tags, symbols_text = parser.get_details_from_undl_url()
             logger.debug(symbols_links)
+            print("symbols_tags: ", symbols_tags)
             for symbol, document_url in symbols_links.items():
                 logger.debug(symbol)
+                print(symbol)
+                query = self.session.query(Document).filter_by(symbol=symbol)
+                if query.count() > 0:
+                    # seen this document before
+                    continue
+                # create new Document object
                 doc = Document(symbol=symbol, url=document_url, raw_text=symbols_text[symbol])
-                for tag in symbols_tags[symbol]:
-                    t = self._insert_tag(tag)
-                    if t:
-                        self.session.add(t)
-                        doc.tags.append(t)
                 self.session.add(doc)
                 self.session.commit()
+                for new_tag in symbols_tags[symbol]:
+                    query = self.session.query(Tag).filter_by(tag=new_tag)
+                    if query.count() > 0:
+                        # tag is already in DB
+                        # update doc
+                        print("Existing Tag: ", query.scalar())
+                        doc.tags.append(query.scalar())
+                        self.session.commit()
+                    else:
+                        # tag is new
+                        # insert tag and update doc
+                        tag = Tag(tag=new_tag)
+                        self.session.add(tag)
+                        doc.tags.append(tag)
+                        self.session.commit()
 
     def get_document_and_tags(self, symbol):
         '''
@@ -94,31 +111,33 @@ class DocumentManager:
         '''
         pass
 
-    def _insert_document(self, symbol, url, raw_text, *tags):
-        query = self.session.query(Document).filter_by(symbol=symbol)
-        if query.count() >= 1:
-            return None
-        try:
-            doc = Document(symbol=symbol, url=url, raw_text=raw_text, tags=tags)
-            self.session.add(doc)
-            self.session.commit()
-        except IntegrityError as err:
-            logger.error("caught IntegrityError for document {} : {}".format(symbol, err))
-            return None
-        else:
-            return doc
+    # def _insert_document(self, symbol, url, raw_text, *tags):
+    #     query = self.session.query(Document).filter_by(symbol=symbol)
+    #     if query.count() >= 1:
+    #         return None
+    #     try:
+    #         doc = Document(symbol=symbol, url=url, raw_text=raw_text, tags=tags)
+    #         self.session.add(doc)
+    #         self.session.commit()
+    #     except IntegrityError as err:
+    #         logger.error("caught IntegrityError for document {} : {}".format(symbol, err))
+    #         return None
+    #     else:
+    #         return doc
 
-    def _insert_tag(self, tag, uri=None):
-        query = self.session.query(Tag).filter_by(tag=tag)
-        if query.count() >= 1:
-            return None
-        t = Tag(tag=tag, uri=uri)
-        self.session.add(t)
-        try:
-            self.session.commit()
-        except IntegrityError as err:
-            logger.error("Caught IntegrityError for tag: {}, {}".format(tag, err))
-            self.session.rollback()
-            return None
-        else:
-            return t
+    # def _insert_or_update_tag(self, tag, doc, uri=None):
+    #     query = self.session.query(Tag).filter_by(tag=tag)
+    #     if query.count() >= 1:
+    #         stmnt = update(Document.__table__).where(Document.symbol == doc.symbol).values(tags=tag)
+    #         self.session.execute(stmnt)
+    #         return None
+    #     t = Tag(tag=tag, uri=uri)
+    #     self.session.add(t)
+    #     try:
+    #         self.session.commit()
+    #     except IntegrityError as err:
+    #         logger.error("Caught IntegrityError for tag: {}, {}".format(tag, err))
+    #         self.session.rollback()
+    #         return None
+    #     else:
+    #         return t
