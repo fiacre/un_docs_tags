@@ -6,10 +6,13 @@ from collections import defaultdict
 import lxml.etree as ET
 from urllib.request import urlopen
 from urllib.parse import urlparse, unquote
-from logging import getLogger
 from config import Config
+from models.models import Document
+from utils.app_logger import logger
+from db.db import get_session
 
-logger = getLogger(__name__)
+session = get_session()
+
 
 DOWNLOAD_DIR = getattr(Config, "DOWNLOAD_DIR", None)
 
@@ -59,6 +62,9 @@ class XmlParse:
         symbols_tags = self._get_tags_for_documents(doc_nodes)
         symbols_text = defaultdict(list)
         for symbol, link in symbols_links.items():
+            query = session.query(Document).filter_by(symbol=symbol)
+            if query.count() > 0:
+                continue
             symbols_text[symbol] = self._get_raw_text_from_document(link)
 
         return symbols_links, symbols_tags, symbols_text

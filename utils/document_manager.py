@@ -1,12 +1,7 @@
 from urllib.parse import urlparse, parse_qsl, urlencode, ParseResult
-from logging import getLogger
 from models.models import Document, Tag
-from db.db import connection
 from .xml_parse import XmlParse
-
-logger = getLogger(__name__)
-
-connection = connection()
+from utils.app_logger import logger
 
 
 class DocumentManager:
@@ -69,10 +64,8 @@ class DocumentManager:
             parser = XmlParse(self.url)
             symbols_links, symbols_tags, symbols_text = parser.get_details_from_undl_url()
             logger.debug(symbols_links)
-            print("symbols_tags: ", symbols_tags)
             for symbol, document_url in symbols_links.items():
                 logger.debug(symbol)
-                print(symbol)
                 query = self.session.query(Document).filter_by(symbol=symbol)
                 if query.count() > 0:
                     # seen this document before
@@ -86,7 +79,6 @@ class DocumentManager:
                     if query.count() > 0:
                         # tag is already in DB
                         # update doc
-                        print("Existing Tag: ", query.scalar())
                         doc.tags.append(query.scalar())
                         self.session.commit()
                     else:
