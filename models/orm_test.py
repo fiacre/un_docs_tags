@@ -4,9 +4,11 @@ from sqlalchemy_utils.types.url import URLType
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
+
 
 Base = declarative_base()
-
 
 DocumentsTags = Table('documents_tags', Base.metadata,
     Column('id', Integer, primary_key=True),
@@ -42,8 +44,40 @@ class Tag(Base):
 
     id = Column(Integer, primary_key=True)
     tag = Column(String, nullable=False, unique=True)
-    representation = Column(String, nullable=True, unique=True)
     uri = Column(URLType, unique=True, nullable=True)
 
     def __repr__(self):
-        return "{}".format(self.tag)
+        return "<Tag: {}".format(self.tag)
+
+POSTGRES_USER = "test_smarttagger"
+POSTGRES_PW = "tst_smarttagger"
+POSTGRES_URL = "127.0.0.1:5432"
+POSTGRES_DB = "test_smarttagger"
+DB_URI = 'postgresql+psycopg2://{user}:{pw}@{url}/{db}'.format(
+    user=POSTGRES_USER,
+    pw=POSTGRES_PW,
+    url=POSTGRES_URL,
+    db=POSTGRES_DB
+)
+engine = create_engine(DB_URI, convert_unicode=True)
+
+DocumentsTags.metadata.create_all(bind=engine)
+Document.metadata.create_all(bind=engine)
+Tag.metadata.create_all(bind=engine)
+
+Session = sessionmaker(bind=engine)
+session = Session()
+
+doca = Document(symbol="there", url="http://foo.bar", raw_text="Lorem Ipsum")
+docb = Document(symbol="here", url="http://foo.bar/sdf", raw_text="Lorem Ipsum")
+docc = Document(symbol="rawtorotg", url="http://foo.bar/sdfg", raw_text="Lorem Ipsum")
+
+tag1 = Tag(tag="this here")
+tag2 = Tag(tag="That there")
+
+doca.tags.append(tag1, tag2)
+docb.tags.append(tag1)
+
+
+session.add([doca, docb, docc])
+session.commit()

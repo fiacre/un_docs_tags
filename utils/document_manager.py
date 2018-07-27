@@ -1,5 +1,6 @@
 from urllib.parse import urlparse, parse_qsl, urlencode, ParseResult
 from models.models import Document, Tag
+from sqlalchemy.exc import IntegrityError
 from .xml_parse import XmlParse
 from utils.app_logger import logger
 
@@ -20,7 +21,7 @@ class DocumentManager:
         self.url = url
         self.session = session
 
-    def paginate_undl_results(self, items_per_page=25, limit=100):
+    def paginate_undl_results(self, items_per_page=25, limit=2000):
         '''
         set a search term for digitallibrary
         and use the api (such as it is)
@@ -33,7 +34,7 @@ class DocumentManager:
         count = 1
         if count == 1:
             yield self.url
-        while count + items_per_page < limit:
+        while count + items_per_page <= limit:
             o = urlparse(self.url)
             query_dict = dict(parse_qsl(o.query))
             if 'jrec' in query_dict.keys():
@@ -62,24 +63,38 @@ class DocumentManager:
         for u in self.paginate_undl_results():
             self.url = u
             parser = XmlParse(self.url)
-            symbols_links, symbols_tags, symbols_text = parser.get_details_from_undl_url()
+            try:
+                symbols_links, symbols_tags, symbols_text = parser.get_details_from_undl_url()
+            except TypeError as err:
+                logger.error("Could not get dictionaries from get_details: {}".format(err))
+                continue
             logger.debug(symbols_links)
             for symbol, document_url in symbols_links.items():
                 logger.debug(symbol)
                 query = self.session.query(Document).filter_by(symbol=symbol)
                 if query.count() > 0:
                     # seen this document before
+                    logger.debug("Seen: {} before, continue".format(symbol))
                     continue
                 # create new Document object
-                doc = Document(symbol=symbol, url=document_url, raw_text=symbols_text[symbol])
-                self.session.add(doc)
-                self.session.commit()
+                try:
+                    doc = Document(symbol=symbol, url=document_url, raw_text=symbols_text[symbol])
+                    self.session.add(doc)
+                    self.session.commit()
+                except IntegrityError as err:
+                    # there are errors in the documents
+                    # urls are supposed to be unique
+                    logger.error("Caught IntegrityError for symbol: {}, url {}".format(
+                        symbol, document_url))
+                    self.session.rollback()
+                    continue
                 for new_tag in symbols_tags[symbol]:
                     query = self.session.query(Tag).filter_by(tag=new_tag)
                     if query.count() > 0:
                         # tag is already in DB
                         # update doc
-                        doc.tags.append(query.scalar())
+                        tag = query.scalar()
+                        doc.tags.append(tag)
                         self.session.commit()
                     else:
                         # tag is new
@@ -87,6 +102,8 @@ class DocumentManager:
                         tag = Tag(tag=new_tag)
                         self.session.add(tag)
                         doc.tags.append(tag)
+                        t = tag.tag.lower()
+                        tag.representation = '_'.join(t.split())
                         self.session.commit()
 
     def get_document_and_tags(self, symbol):

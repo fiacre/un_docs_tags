@@ -55,6 +55,8 @@ class XmlParse:
         root = ET.fromstring(xml)
         doc_nodes = self._get_document_symbols(root)
         doc_loc = self._get_pdf_links(root)
+        if not doc_nodes or not doc_loc:
+            return None
         symbols = [d.text.strip() for d in doc_nodes]
         links = [l.text.strip('\n') for l in doc_loc]
 
@@ -75,6 +77,7 @@ class XmlParse:
         return the element tree nodes
         collection > record > datafield
         '''
+        doc_nodes = None
         doc_nodes = root.xpath('.//s:datafield[@tag="191"]/s:subfield[@code="a"]', namespaces=self.ns)
         return doc_nodes
 
@@ -82,6 +85,7 @@ class XmlParse:
         '''
         @root: xml root
         '''
+        links = None
         links = root.xpath(
             './/s:datafield[@tag="856"][s:subfield[@code="y"]="English"]/s:subfield[@code="u"]', namespaces=self.ns)
         return links
