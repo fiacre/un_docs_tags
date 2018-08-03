@@ -96,7 +96,7 @@ class XmlParse:
         '''
         document_tags = defaultdict(list)
         for elem in doc_nodes:
-            tags = elem.xpath('../../s:datafield[@tag="650"]/s:subfield[@code="a"]', namespaces=self.ns)
+            tags = elem.xpath('../../s:datafield[@tag="650" or @tag="651"]/s:subfield[@code="a"]', namespaces=self.ns)
             document_tags[elem.text.strip()] = [t.text.strip() for t in tags]
         if not document_tags or document_tags == []:
             raise UNDLXmlException("Could not get tags for current document")

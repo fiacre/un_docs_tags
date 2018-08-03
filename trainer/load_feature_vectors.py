@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.multiclass import OneVsRestClassifier
-# from sklearn.svm import LinearSVC
+from sklearn.svm import LinearSVC
 # from sklearn.pipeline import Pipeline
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import train_test_split
@@ -57,10 +57,11 @@ def _get_test_train_tags(doc_query):
 
 
 def train_test_model(X_train, Y_train, X_test, Y_test):
-    mnb = OneVsRestClassifier(MultinomialNB())
-    mnb.fit(X_train, Y_train).predict(X_train)
-    print('Accuracy testing : {:.3f}'.format(mnb.score(X_test, Y_test)))
-    return mnb
+    # mnb = OneVsRestClassifier(MultinomialNB())
+    clf = OneVsRestClassifier(LinearSVC())
+    clf.fit(X_train, Y_train).predict(X_test)
+    print('Accuracy testing : {:.3f}'.format(clf.score(X_test, Y_test)))
+    return clf
 
 
 def get_top_n_words(corpus, n=None):
