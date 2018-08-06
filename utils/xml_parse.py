@@ -67,7 +67,9 @@ class XmlParse:
             query = session.query(Document).filter_by(symbol=symbol)
             if query.count() > 0:
                 continue
-            symbols_text[symbol] = self._get_raw_text_from_document(link)
+            raw_text = self._get_raw_text_from_document(link)
+            if raw_text:
+                symbols_text[symbol] = raw_text
 
         return symbols_links, symbols_tags, symbols_text
 
@@ -131,4 +133,6 @@ class XmlParse:
         raw_text = completed.stdout.decode('utf-8')
         # clean up
         remove(join(DOWNLOAD_DIR, doc_name))
+        if len(raw_text) < 500:
+            return None
         return raw_text

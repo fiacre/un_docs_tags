@@ -21,7 +21,7 @@ class DocumentManager:
         self.url = url
         self.session = session
 
-    def paginate_undl_results(self, items_per_page=25, limit=2500):
+    def paginate_undl_results(self, items_per_page=25, limit=2100):
         '''
         set a search term for digitallibrary
         and use the api (such as it is)
